@@ -12,6 +12,7 @@ grafo = {}
 centros_dict = {}  # Diccionario: codigo -> {nombre, region, subregion}
 rutas_list = []    # Lista de rutas: (origen, destino, distancia, costo)
 regiones_arbol = {}  # Árbol jerárquico: region -> subregiones -> centros
+centros_seleccionados = []
 
 # ---------- CLASES PARA ESTRUCTURAS ----------
 class Centro:
@@ -569,6 +570,177 @@ def consultar_centro_especifico():
         print(f"Encontrados: {len(resultados)} centro(s)")
     else:
         print(f"\nNo se encontraron centros con {campo}: '{valor_buscar}'")
+#----------- FUNCIONES PARA CLIENTE -----------
+def ver_mapa_centros():
+    print("\n" + "="*40)
+    print("MAPA DE CENTROS CONECTADOS")
+    print("="*40)
+    
+    if not grafo:
+        print("No hay centros conectados")
+        return
+    
+    print("\nCentros y sus conexiones:")
+    print("="*60)
+    
+    for centro, conexiones in grafo.items():
+        nombre = centros_dict.get(centro, {}).get('nombre', 'Desconocido')
+        print(f"\n{centro}: {nombre}")
+        print("  Conexiones:")
+        
+        if conexiones:
+            for destino, costo in conexiones:
+                nombre_destino = centros_dict.get(destino, {}).get('nombre', 'Desconocido')
+                print(f"    -> {destino}: {nombre_destino} (Costo: ${costo})")
+        else:
+            print("    Sin conexiones")
+    
+    print("\n" + "="*60)
+    print(f"Total de centros: {len(grafo)}")
+    print(f"Total de rutas: {len(rutas_list)}")
+
+def consultar_ruta_optima():
+    print("\n" + "="*40)
+    print("CONSULTAR RUTA OPTIMA")
+    print("="*40)
+    
+    if len(centros_dict) < 2:
+        print("Necesita al menos 2 centros")
+        return
+    
+    print("\nCentros disponibles:")
+    for i, codigo in enumerate(centros_dict.keys(), 1):
+        centro = centros_dict[codigo]
+        print(f"  {i:3}. {codigo}: {centro['nombre']}")
+    
+    while True:
+        origen = input("\nCodigo de origen: ").strip().upper()
+        if origen in centros_dict:
+            break
+        print("Centro no encontrado")
+    
+    while True:
+        destino = input("Codigo de destino: ").strip().upper()
+        if destino in centros_dict and destino != origen:
+            break
+        print("Centro no encontrado o igual al origen")
+    
+    # Usar Dijkstra para encontrar la ruta mas economica
+    ruta, costo = dijkstra(origen, destino)
+    
+    if ruta is None:
+        print("No hay ruta disponible entre los centros seleccionados")
+        return
+    
+    print("\n" + "="*60)
+    print("RUTA OPTIMA ENCONTRADA")
+    print("="*60)
+    
+    nombre_origen = centros_dict[origen]['nombre']
+    nombre_destino = centros_dict[destino]['nombre']
+    
+    print(f"\nDe: {origen} ({nombre_origen})")
+    print(f"A:  {destino} ({nombre_destino})")
+    print(f"\nCosto total: ${costo:.2f}")
+    
+    print("\nRuta detallada:")
+    for i, nodo in enumerate(ruta):
+        nombre = centros_dict.get(nodo, {}).get('nombre', 'Desconocido')
+        print(f"  {i+1:2}. {nodo}: {nombre}")
+    
+    print("\n" + "="*60)
+
+def seleccionar_centros_envio():
+    global centros_seleccionados
+    
+    print("\n" + "="*40)
+    print("SELECCIONAR CENTROS PARA ENVIO")
+    print("="*40)
+    
+    if len(centros_dict) < 2:
+        print("Necesita al menos 2 centros registrados")
+        return
+    
+    while True:
+        print("\nCentros disponibles:")
+        for i, codigo in enumerate(centros_dict.keys(), 1):
+            centro = centros_dict[codigo]
+            seleccionado = "X" if codigo in centros_seleccionados else " "
+            print(f"  [{seleccionado}] {i:3}. {codigo}: {centro['nombre']}")
+        
+        print("\nCentros seleccionados actualmente:")
+        if centros_seleccionados:
+            for i, codigo in enumerate(centros_seleccionados, 1):
+                nombre = centros_dict[codigo]['nombre']
+                print(f"  {i:2}. {codigo}: {nombre}")
+        else:
+            print("  (Ninguno)")
+        
+        print("\nOpciones:")
+        print("  [codigo] - Agregar/remover centro")
+        print("  ordenar  - Ordenar centros seleccionados")
+        print("  limpiar  - Limpiar seleccion")
+        print("  listo    - Terminar seleccion")
+        
+        opcion = input("\nOpcion: ").strip().upper()
+        
+        if opcion == "LISTO":
+            if len(centros_seleccionados) < 2:
+                print("Debe seleccionar al menos 2 centros")
+                continue
+            break
+        
+        elif opcion == "LIMPIAR":
+            centros_seleccionados = []
+            print("Seleccion limpiada")
+        
+        elif opcion == "ORDENAR":
+            if len(centros_seleccionados) < 2:
+                print("Necesita al menos 2 centros para ordenar")
+                continue
+            
+            print("\nOrdenar por:")
+            print("1. Codigo")
+            print("2. Nombre")
+            print("3. Region")
+            
+            try:
+                campo_opcion = int(input("Seleccione (1-3): "))
+                
+                # Convertir a objetos Centro
+                centros_objs = []
+                for codigo in centros_seleccionados:
+                    datos = centros_dict[codigo]
+                    centros_objs.append(Centro(codigo, datos['nombre'], datos['region'], datos['subregion']))
+                
+                # Mapear campo
+                campos = {1: "codigo", 2: "nombre", 3: "region"}
+                campo = campos.get(campo_opcion, "codigo")
+                
+                # Ordenar con Quick Sort
+                centros_ordenados = quicksort(centros_objs, campo, True)
+                
+                # Actualizar lista
+                centros_seleccionados = [centro.codigo for centro in centros_ordenados]
+                
+                print(f"Centros ordenados por {campo}")
+            
+            except ValueError:
+                print("Opcion invalida")
+        
+        else:
+            # Verificar si es un codigo valido
+            if opcion in centros_dict:
+                if opcion in centros_seleccionados:
+                    centros_seleccionados.remove(opcion)
+                    print(f"Centro {opcion} removido de la seleccion")
+                else:
+                    centros_seleccionados.append(opcion)
+                    print(f"Centro {opcion} agregado a la seleccion")
+            else:
+                print("Codigo no valido")
+    
+    print(f"\nSeleccion completada: {len(centros_seleccionados)} centros seleccionados")
 
 # ---------- MENÚ ADMINISTRADOR ----------
 def menu_admin(usuario_info):
@@ -621,10 +793,13 @@ def menu_cliente(usuario_info):
         match opcion:
             case "1":
                 print("---Ver mapa de centros---")
+                ver_mapa_centros()
             case "2":
                 print("---Consultar ruta óptima---")
+                consultar_ruta_optima()
             case "3":
                 print("---Seleccionar centros---")
+                seleccionar_centros_envio()
             case "4":
                 print("---Guardar ruta---")
             case "5":
