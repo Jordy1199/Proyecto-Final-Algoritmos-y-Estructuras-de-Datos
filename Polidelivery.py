@@ -186,6 +186,7 @@ def login():
 def quicksort(lista, campo, ascendente=True):
     """
     Implementación de Quick Sort para ordenar listas de objetos.
+    Modificado para ordenar in-place cuando sea posible.
     """
     if len(lista) <= 1:
         return lista
@@ -214,47 +215,59 @@ def quicksort(lista, campo, ascendente=True):
     else:
         return quicksort(right, campo, ascendente) + middle + quicksort(left, campo, ascendente)
 
-# ---------- ALGORITMO DE BÚSQUEDA (BÚSQUEDA BINARIA) ----------
-def busqueda_binaria(lista_ordenada, campo, valor):
+# ---------- ALGORITMO DE BÚSQUEDA (BÚSQUEDA BINARIA MEJORADA) ----------
+def busqueda_binaria_mejorada(lista_ordenada, campo, valor):
     """
-    Implementación de Búsqueda Binaria para listas ordenadas.
-    Devuelve el índice del elemento encontrado o -1 si no existe.
+    Implementación de Búsqueda Binaria mejorada que encuentra TODAS las coincidencias.
+    Devuelve una lista con todos los elementos que coinciden.
     """
+    if not lista_ordenada:
+        return []
+    
+    # Primero encontrar la PRIMERA ocurrencia
     izquierda = 0
     derecha = len(lista_ordenada) - 1
-
+    primera_ocurrencia = -1
+    
     while izquierda <= derecha:
         medio = (izquierda + derecha) // 2
         medio_valor = getattr(lista_ordenada[medio], campo)
-
+        
         if medio_valor == valor:
-            return medio
+            primera_ocurrencia = medio
+            derecha = medio - 1  # Buscar hacia atrás para la primera ocurrencia
         elif medio_valor < valor:
             izquierda = medio + 1
         else:
             derecha = medio - 1
-
-    return -1
+    
+    # Si no se encontró ninguna ocurrencia
+    if primera_ocurrencia == -1:
+        return []
+    
+    # Recoger todas las ocurrencias consecutivas
+    resultados = []
+    i = primera_ocurrencia
+    while i < len(lista_ordenada) and getattr(lista_ordenada[i], campo) == valor:
+        resultados.append(lista_ordenada[i])
+        i += 1
+    
+    return resultados
 
 def buscar_centros_por_campo(valor_buscar, campo_buscar):
     """
-    Función auxiliar para buscar centros usando búsqueda binaria.
+    Función auxiliar para buscar centros usando búsqueda binaria mejorada.
     """
-    # Primero ordenar la lista
+    # Convertir a lista de objetos Centro
     centros_objetos = []
     for codigo, datos in centros_dict.items():
         centros_objetos.append(Centro(codigo, datos["nombre"], datos["region"], datos["subregion"]))
 
     # Ordenar por el campo de búsqueda
-    centros_ordenados = quicksort(centros_objetos.copy(), campo_buscar)
+    centros_ordenados = quicksort(centros_objetos, campo_buscar)
 
-    # Realizar búsqueda binaria
-    indice = busqueda_binaria(centros_ordenados, campo_buscar, valor_buscar)
-
-    if indice != -1:
-        return [centros_ordenados[indice]]
-    else:
-        return []
+    # Realizar búsqueda binaria mejorada
+    return busqueda_binaria_mejorada(centros_ordenados, campo_buscar, valor_buscar)
 
 # ---------- ALGORITMOS DE GRAFOS ----------
 def dijkstra(origen, destino=None):
@@ -339,6 +352,29 @@ def dfs_exploracion_total(origen):
 
     dfs_recursivo(origen)
     return ruta_completa
+
+# ---------- FUNCIONES SEGURAS PARA GUARDAR ----------
+def guardar_centros():
+    """Función segura para guardar centros"""
+    try:
+        with open("centros.txt", "w", encoding="utf-8") as archivo:
+            for codigo, datos in centros_dict.items():
+                archivo.write(f"{codigo};{datos['nombre']};{datos['region']};{datos['subregion']}\n")
+        return True
+    except Exception as e:
+        print(f"Error al guardar centros: {e}")
+        return False
+
+def guardar_rutas():
+    """Función segura para guardar rutas"""
+    try:
+        with open("rutas.txt", "w", encoding="utf-8") as archivo:
+            for ruta in rutas_list:
+                archivo.write(f"{ruta.origen};{ruta.destino};{ruta.distancia};{ruta.costo}\n")
+        return True
+    except Exception as e:
+        print(f"Error al guardar rutas: {e}")
+        return False
 
 # ---------- FUNCIONES DEL ADMINISTRADOR ----------
 def agregar_centro_distribucion():
@@ -498,7 +534,7 @@ def menu_listar_ordenamiento():
         ascendente = orden_opcion == "1"
 
         # Aplicar ordenamiento QUICK SORT
-        centros_ordenados = quicksort(centros_objetos.copy(), campo, ascendente)
+        centros_ordenados = quicksort(centros_objetos, campo, ascendente)
 
         print("\n" + "="*80)
         orden_texto = "ASCENDENTE" if ascendente else "DESCENDENTE"
@@ -552,12 +588,12 @@ def consultar_centro_especifico():
     if campo == "codigo":
         valor_buscar = valor_buscar.upper()
 
-    # Realizar búsqueda binaria
+    # Realizar búsqueda binaria mejorada
     resultados = buscar_centros_por_campo(valor_buscar, campo)
 
     if resultados:
         print("\n" + "="*80)
-        print(f"RESULTADOS DE BÚSQUEDA (Búsqueda Binaria)")
+        print(f"RESULTADOS DE BÚSQUEDA (Búsqueda Binaria Mejorada)")
         print("="*80)
         print(f"{'CÓDIGO':<10} {'NOMBRE':<25} {'REGIÓN':<15} {'SUBREGIÓN':<15}")
         print("-"*80)
@@ -569,9 +605,10 @@ def consultar_centro_especifico():
         print(f"Encontrados: {len(resultados)} centro(s)")
     else:
         print(f"\nNo se encontraron centros con {campo}: '{valor_buscar}'")
+
 def actualizar_centro():
     print("\n" + "="*40)
-    print("ACTUALIZAR CENTRO DE DISTRIBUCION")
+    print("ACTUALIZAR CENTRO DE DISTRIBUCIÓN")
     print("="*40)
     
     if not centros_dict:
@@ -583,7 +620,7 @@ def actualizar_centro():
         centro = centros_dict[codigo]
         print(f"  {i:3}. {codigo}: {centro['nombre']}")
     
-    codigo = input("\nCodigo del centro a actualizar: ").strip().upper()
+    codigo = input("\nCódigo del centro a actualizar: ").strip().upper()
     
     if codigo not in centros_dict:
         print("Centro no encontrado")
@@ -593,26 +630,32 @@ def actualizar_centro():
     
     print("\nDatos actuales:")
     print(f"  Nombre: {centro_actual['nombre']}")
-    print(f"  Region: {centro_actual['region']}")
-    print(f"  Subregion: {centro_actual['subregion']}")
+    print(f"  Región: {centro_actual['region']}")
+    print(f"  Subregión: {centro_actual['subregion']}")
     
-    print("\nIngrese nuevos datos (dejar vacio para mantener actual):")
+    print("\nIngrese nuevos datos (dejar vacío para mantener actual):")
     
     nuevo_nombre = input(f"Nuevo nombre [{centro_actual['nombre']}]: ").strip()
     if nuevo_nombre:
         centro_actual['nombre'] = nuevo_nombre
     
-    nueva_region = input(f"Nueva region [{centro_actual['region']}]: ").strip()
+    nueva_region = input(f"Nueva región [{centro_actual['region']}]: ").strip()
     if nueva_region:
-        # Actualizar arbol jerarquico
+        # Actualizar árbol jerárquico
         if nueva_region != centro_actual['region']:
-            # Remover de region anterior
+            # Remover de región anterior
             if centro_actual['region'] in regiones_arbol:
                 if centro_actual['subregion'] in regiones_arbol[centro_actual['region']]:
                     if codigo in regiones_arbol[centro_actual['region']][centro_actual['subregion']]:
                         regiones_arbol[centro_actual['region']][centro_actual['subregion']].remove(codigo)
+                        # Limpiar subregiones vacías
+                        if not regiones_arbol[centro_actual['region']][centro_actual['subregion']]:
+                            del regiones_arbol[centro_actual['region']][centro_actual['subregion']]
+                        # Limpiar regiones vacías
+                        if not regiones_arbol[centro_actual['region']]:
+                            del regiones_arbol[centro_actual['region']]
             
-            # Agregar a nueva region
+            # Agregar a nueva región
             if nueva_region not in regiones_arbol:
                 regiones_arbol[nueva_region] = {}
             if centro_actual['subregion'] not in regiones_arbol[nueva_region]:
@@ -621,17 +664,22 @@ def actualizar_centro():
         
         centro_actual['region'] = nueva_region
     
-    nueva_subregion = input(f"Nueva subregion [{centro_actual['subregion']}]: ").strip()
+    nueva_subregion = input(f"Nueva subregión [{centro_actual['subregion']}]: ").strip()
     if nueva_subregion:
+        region_actual = centro_actual['region']
+        
         if nueva_subregion != centro_actual['subregion']:
-            # Actualizar arbol jerarquico
-            region_actual = centro_actual['region']
+            # Actualizar árbol jerárquico
+            # Remover de subregión anterior
+            if region_actual in regiones_arbol:
+                if centro_actual['subregion'] in regiones_arbol[region_actual]:
+                    if codigo in regiones_arbol[region_actual][centro_actual['subregion']]:
+                        regiones_arbol[region_actual][centro_actual['subregion']].remove(codigo)
+                        # Limpiar subregiones vacías
+                        if not regiones_arbol[region_actual][centro_actual['subregion']]:
+                            del regiones_arbol[region_actual][centro_actual['subregion']]
             
-            # Remover de subregion anterior
-            if codigo in regiones_arbol[region_actual][centro_actual['subregion']]:
-                regiones_arbol[region_actual][centro_actual['subregion']].remove(codigo)
-            
-            # Agregar a nueva subregion
+            # Agregar a nueva subregión
             if nueva_subregion not in regiones_arbol[region_actual]:
                 regiones_arbol[region_actual][nueva_subregion] = []
             regiones_arbol[region_actual][nueva_subregion].append(codigo)
@@ -639,77 +687,86 @@ def actualizar_centro():
         centro_actual['subregion'] = nueva_subregion
     
     # Guardar cambios en archivo
-    with open("centros.txt", "w", encoding="utf-8") as archivo:
-        for cod, datos in centros_dict.items():
-            archivo.write(f"{cod};{datos['nombre']};{datos['region']};{datos['subregion']}\n")
-    
-    print("Centro actualizado correctamente")
+    if guardar_centros():
+        print("Centro actualizado correctamente")
+    else:
+        print("Error al guardar los cambios")
 
 def eliminar_elemento():
     print("\n" + "="*40)
     print("ELIMINAR ELEMENTOS")
     print("="*40)
     
-    print("\nQue desea eliminar?")
-    print("1. Centro de distribucion")
+    print("\n¿Qué desea eliminar?")
+    print("1. Centro de distribución")
     print("2. Ruta")
     
     opcion = input("Seleccione (1-2): ").strip()
     
     if opcion == "1":
+        if not centros_dict:
+            print("No hay centros registrados")
+            return
+            
         print("\nCentros disponibles:")
         for i, codigo in enumerate(centros_dict.keys(), 1):
             centro = centros_dict[codigo]
             print(f"  {i:3}. {codigo}: {centro['nombre']}")
         
-        codigo = input("\nCodigo del centro a eliminar: ").strip().upper()
+        codigo = input("\nCódigo del centro a eliminar: ").strip().upper()
         
         if codigo not in centros_dict:
             print("Centro no encontrado")
             return
         
         # Confirmar
-        confirmar = input(f"Esta seguro de eliminar el centro {codigo}? (s/n): ").strip().lower()
+        confirmar = input(f"¿Está seguro de eliminar el centro {codigo}? (s/n): ").strip().lower()
         if confirmar != 's':
-            print("Eliminacion cancelada")
+            print("Eliminación cancelada")
             return
         
-        # Eliminar rutas asociadas
+        # Eliminar rutas asociadas del grafo y lista
         rutas_a_eliminar = []
         for ruta in rutas_list:
             if ruta.origen == codigo or ruta.destino == codigo:
                 rutas_a_eliminar.append(ruta)
+                # Eliminar del grafo también
+                if ruta.origen in grafo:
+                    grafo[ruta.origen] = [(v, p) for v, p in grafo[ruta.origen] if v != ruta.destino]
+                if ruta.destino in grafo:
+                    grafo[ruta.destino] = [(v, p) for v, p in grafo[ruta.destino] if v != ruta.origen]
         
+        # Eliminar de la lista
         for ruta in rutas_a_eliminar:
             rutas_list.remove(ruta)
         
-        # Actualizar archivo de rutas
-        with open("rutas.txt", "w", encoding="utf-8") as archivo:
-            for ruta in rutas_list:
-                archivo.write(f"{ruta.origen};{ruta.destino};{ruta.distancia};{ruta.costo}\n")
-        
         # Eliminar del grafo
         if codigo in grafo:
-            # Eliminar conexiones de otros nodos
+            # Eliminar conexiones de otros nodos hacia este centro
             for vecino, _ in grafo[codigo]:
-                grafo[vecino] = [(v, p) for v, p in grafo[vecino] if v != codigo]
-            
+                if vecino in grafo:
+                    grafo[vecino] = [(v, p) for v, p in grafo[vecino] if v != codigo]
             del grafo[codigo]
         
-        # Eliminar del arbol jerarquico
+        # Eliminar del árbol jerárquico
         datos_centro = centros_dict[codigo]
         if datos_centro['region'] in regiones_arbol:
             if datos_centro['subregion'] in regiones_arbol[datos_centro['region']]:
                 if codigo in regiones_arbol[datos_centro['region']][datos_centro['subregion']]:
                     regiones_arbol[datos_centro['region']][datos_centro['subregion']].remove(codigo)
+                    # Limpiar si la subregión queda vacía
+                    if not regiones_arbol[datos_centro['region']][datos_centro['subregion']]:
+                        del regiones_arbol[datos_centro['region']][datos_centro['subregion']]
+                    # Limpiar si la región queda vacía
+                    if not regiones_arbol[datos_centro['region']]:
+                        del regiones_arbol[datos_centro['region']]
         
         # Eliminar del diccionario
         del centros_dict[codigo]
         
-        # Actualizar archivo de centros
-        with open("centros.txt", "w", encoding="utf-8") as archivo:
-            for cod, datos in centros_dict.items():
-                archivo.write(f"{cod};{datos['nombre']};{datos['region']};{datos['subregion']}\n")
+        # Actualizar archivos
+        guardar_centros()
+        guardar_rutas()
         
         print(f"Centro {codigo} eliminado correctamente")
     
@@ -723,14 +780,14 @@ def eliminar_elemento():
             print(f"  {i:3}. {ruta.origen} -> {ruta.destino}: {ruta.distancia}km, ${ruta.costo}")
         
         try:
-            indice = int(input("\nNumero de ruta a eliminar: ")) - 1
+            indice = int(input("\nNúmero de ruta a eliminar: ")) - 1
             if 0 <= indice < len(rutas_list):
                 ruta_a_eliminar = rutas_list[indice]
                 
                 # Confirmar
-                confirmar = input(f"Eliminar ruta {ruta_a_eliminar.origen}-{ruta_a_eliminar.destino}? (s/n): ").strip().lower()
+                confirmar = input(f"¿Eliminar ruta {ruta_a_eliminar.origen}-{ruta_a_eliminar.destino}? (s/n): ").strip().lower()
                 if confirmar != 's':
-                    print("Eliminacion cancelada")
+                    print("Eliminación cancelada")
                     return
                 
                 # Eliminar del grafo
@@ -746,44 +803,34 @@ def eliminar_elemento():
                 del rutas_list[indice]
                 
                 # Actualizar archivo
-                with open("rutas.txt", "w", encoding="utf-8") as archivo:
-                    for ruta in rutas_list:
-                        archivo.write(f"{ruta.origen};{ruta.destino};{ruta.distancia};{ruta.costo}\n")
+                guardar_rutas()
                 
                 print("Ruta eliminada correctamente")
             else:
-                print("Numero invalido")
+                print("Número inválido")
         except ValueError:
-            print("Ingrese un numero valido")
+            print("Ingrese un número válido")
     
     else:
-        print("Opcion invalida")
+        print("Opción inválida")
 
 def guardar_datos():
     print("\n" + "="*40)
     print("GUARDAR DATOS")
     print("="*40)
     
-    # Los datos ya se guardan automaticamente en cada operacion
-    # Esta funcion es para guardar manualmente
+    # Guardar centros
+    centros_ok = guardar_centros()
     
-    try:
-        # Guardar centros
-        with open("centros.txt", "w", encoding="utf-8") as archivo:
-            for codigo, datos in centros_dict.items():
-                archivo.write(f"{codigo};{datos['nombre']};{datos['region']};{datos['subregion']}\n")
-        
-        # Guardar rutas
-        with open("rutas.txt", "w", encoding="utf-8") as archivo:
-            for ruta in rutas_list:
-                archivo.write(f"{ruta.origen};{ruta.destino};{ruta.distancia};{ruta.costo}\n")
-        
+    # Guardar rutas
+    rutas_ok = guardar_rutas()
+    
+    if centros_ok and rutas_ok:
         print("Datos guardados correctamente en centros.txt y rutas.txt")
-    
-    except Exception as e:
-        print(f"Error al guardar datos: {e}")
-        
-#----------- FUNCIONES PARA CLIENTE -----------
+    else:
+        print("Hubo problemas al guardar algunos datos")
+
+# ---------- FUNCIONES PARA CLIENTE -----------
 def ver_mapa_centros():
     print("\n" + "="*40)
     print("MAPA DE CENTROS CONECTADOS")
@@ -796,6 +843,7 @@ def ver_mapa_centros():
     print("\nCentros y sus conexiones:")
     print("="*60)
     
+    total_conexiones = 0
     for centro, conexiones in grafo.items():
         nombre = centros_dict.get(centro, {}).get('nombre', 'Desconocido')
         print(f"\n{centro}: {nombre}")
@@ -804,17 +852,19 @@ def ver_mapa_centros():
         if conexiones:
             for destino, costo in conexiones:
                 nombre_destino = centros_dict.get(destino, {}).get('nombre', 'Desconocido')
-                print(f"    -> {destino}: {nombre_destino} (Costo: ${costo})")
+                print(f"    -> {destino}: {nombre_destino} (Costo: ${costo:.2f})")
+                total_conexiones += 1
         else:
             print("    Sin conexiones")
     
     print("\n" + "="*60)
     print(f"Total de centros: {len(grafo)}")
-    print(f"Total de rutas: {len(rutas_list)}")
+    print(f"Total de conexiones: {total_conexiones // 2}")  # Dividir por 2 porque cada ruta se cuenta dos veces
+    print(f"Total de rutas únicas: {len(rutas_list)}")
 
 def consultar_ruta_optima():
     print("\n" + "="*40)
-    print("CONSULTAR RUTA OPTIMA")
+    print("CONSULTAR RUTA ÓPTIMA")
     print("="*40)
     
     if len(centros_dict) < 2:
@@ -827,18 +877,18 @@ def consultar_ruta_optima():
         print(f"  {i:3}. {codigo}: {centro['nombre']}")
     
     while True:
-        origen = input("\nCodigo de origen: ").strip().upper()
+        origen = input("\nCódigo de origen: ").strip().upper()
         if origen in centros_dict:
             break
         print("Centro no encontrado")
     
     while True:
-        destino = input("Codigo de destino: ").strip().upper()
+        destino = input("Código de destino: ").strip().upper()
         if destino in centros_dict and destino != origen:
             break
         print("Centro no encontrado o igual al origen")
     
-    # Usar Dijkstra para encontrar la ruta mas economica
+    # Usar Dijkstra para encontrar la ruta más económica
     ruta, costo = dijkstra(origen, destino)
     
     if ruta is None:
@@ -846,7 +896,7 @@ def consultar_ruta_optima():
         return
     
     print("\n" + "="*60)
-    print("RUTA OPTIMA ENCONTRADA")
+    print("RUTA ÓPTIMA ENCONTRADA")
     print("="*60)
     
     nombre_origen = centros_dict[origen]['nombre']
@@ -859,7 +909,16 @@ def consultar_ruta_optima():
     print("\nRuta detallada:")
     for i, nodo in enumerate(ruta):
         nombre = centros_dict.get(nodo, {}).get('nombre', 'Desconocido')
-        print(f"  {i+1:2}. {nodo}: {nombre}")
+        if i > 0:
+            # Encontrar el costo entre nodos consecutivos
+            costo_segmento = 0
+            for vecino, peso in grafo[ruta[i-1]]:
+                if vecino == nodo:
+                    costo_segmento = peso
+                    break
+            print(f"  {i:2}. {nodo}: {nombre} (Costo del segmento: ${costo_segmento:.2f})")
+        else:
+            print(f"  {i+1:2}. {nodo}: {nombre}")
     
     print("\n" + "="*60)
 
@@ -867,7 +926,7 @@ def seleccionar_centros_envio():
     global centros_seleccionados
     
     print("\n" + "="*40)
-    print("SELECCIONAR CENTROS PARA ENVIO")
+    print("SELECCIONAR CENTROS PARA ENVÍO")
     print("="*40)
     
     if len(centros_dict) < 2:
@@ -890,12 +949,12 @@ def seleccionar_centros_envio():
             print("  (Ninguno)")
         
         print("\nOpciones:")
-        print("  [codigo] - Agregar/remover centro")
+        print("  [código] - Agregar/remover centro")
         print("  ordenar  - Ordenar centros seleccionados")
-        print("  limpiar  - Limpiar seleccion")
-        print("  listo    - Terminar seleccion")
+        print("  limpiar  - Limpiar selección")
+        print("  listo    - Terminar selección")
         
-        opcion = input("\nOpcion: ").strip().upper()
+        opcion = input("\nOpción: ").strip().upper()
         
         if opcion == "LISTO":
             if len(centros_seleccionados) < 2:
@@ -905,7 +964,7 @@ def seleccionar_centros_envio():
         
         elif opcion == "LIMPIAR":
             centros_seleccionados = []
-            print("Seleccion limpiada")
+            print("Selección limpiada")
         
         elif opcion == "ORDENAR":
             if len(centros_seleccionados) < 2:
@@ -913,9 +972,9 @@ def seleccionar_centros_envio():
                 continue
             
             print("\nOrdenar por:")
-            print("1. Codigo")
+            print("1. Código")
             print("2. Nombre")
-            print("3. Region")
+            print("3. Región")
             
             try:
                 campo_opcion = int(input("Seleccione (1-3): "))
@@ -939,21 +998,21 @@ def seleccionar_centros_envio():
                 print(f"Centros ordenados por {campo}")
             
             except ValueError:
-                print("Opcion invalida")
+                print("Opción inválida")
         
         else:
-            # Verificar si es un codigo valido
+            # Verificar si es un código válido
             if opcion in centros_dict:
                 if opcion in centros_seleccionados:
                     centros_seleccionados.remove(opcion)
-                    print(f"Centro {opcion} removido de la seleccion")
+                    print(f"Centro {opcion} removido de la selección")
                 else:
                     centros_seleccionados.append(opcion)
-                    print(f"Centro {opcion} agregado a la seleccion")
+                    print(f"Centro {opcion} agregado a la selección")
             else:
-                print("Codigo no valido")
+                print("Código no válido")
     
-    print(f"\nSeleccion completada: {len(centros_seleccionados)} centros seleccionados")
+    print(f"\nSelección completada: {len(centros_seleccionados)} centros seleccionados")
 
 
 def explorar_centros_jerarquicos():
@@ -979,16 +1038,33 @@ def listar_centros_seleccionados_y_costo():
         return
 
     costo_total = 0
+    ruta_completa = []
 
+    print("Ruta seleccionada:")
     for i in range(len(centros_seleccionados) - 1):
         origen = centros_seleccionados[i]
         destino = centros_seleccionados[i + 1]
-        _, costo = dijkstra(origen, destino)
+        ruta, costo = dijkstra(origen, destino)
+        
+        if ruta is None:
+            print(f"No hay ruta disponible entre {origen} y {destino}")
+            return
+        
+        if i == 0:
+            ruta_completa.extend(ruta)
+        else:
+            # Evitar duplicar el nodo de conexión
+            ruta_completa.extend(ruta[1:])
+        
         costo_total += costo
-
-    print("Ruta seleccionada:")
+    
     print(" -> ".join(centros_seleccionados))
-    print(f"Costo total estimado: ${costo_total:.2f}")
+    print(f"\nCosto total estimado: ${costo_total:.2f}")
+    
+    print("\nRuta detallada completa:")
+    for i, codigo in enumerate(ruta_completa):
+        nombre = centros_dict.get(codigo, {}).get('nombre', 'Desconocido')
+        print(f"  {i+1:2}. {codigo}: {nombre}")
 
 def eliminar_centros_seleccionados():
     global centros_seleccionados
@@ -1020,13 +1096,29 @@ def guardar_seleccion_cliente(usuario_info):
 
     nombre_archivo = f"seleccion-{usuario_info['nombre'].lower()}-{usuario_info['apellido'].lower()}.txt"
 
-    with open(nombre_archivo, "w", encoding="utf-8") as archivo:
-        archivo.write("Centros seleccionados:\n")
-        for codigo in centros_seleccionados:
-            nombre = centros_dict[codigo]['nombre']
-            archivo.write(f"- {codigo}: {nombre}\n")
-
-    print(f"Selección guardada en {nombre_archivo}")
+    try:
+        with open(nombre_archivo, "w", encoding="utf-8") as archivo:
+            archivo.write("="*60 + "\n")
+            archivo.write(f"  SELECCIÓN DE CENTROS PARA ENVÍO\n")
+            archivo.write("="*60 + "\n\n")
+            archivo.write(f"Cliente: {usuario_info['nombre']} {usuario_info['apellido']}\n")
+            archivo.write(f"Cédula: {usuario_info['cedula']}\n")
+            archivo.write(f"Fecha: {__import__('datetime').datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+            archivo.write("Centros seleccionados:\n")
+            archivo.write("-"*60 + "\n")
+            
+            for i, codigo in enumerate(centros_seleccionados, 1):
+                nombre = centros_dict[codigo]['nombre']
+                region = centros_dict[codigo]['region']
+                subregion = centros_dict[codigo]['subregion']
+                archivo.write(f"{i:2}. {codigo}: {nombre}\n")
+                archivo.write(f"     Región: {region} - Subregión: {subregion}\n")
+            
+            archivo.write("\n" + "="*60 + "\n")
+        
+        print(f"Selección guardada en {nombre_archivo}")
+    except Exception as e:
+        print(f"Error al guardar la selección: {e}")
 
 
 # ---------- MENÚ ADMINISTRADOR ----------
@@ -1068,48 +1160,49 @@ def menu_admin(usuario_info):
 # ---------- MENÚ CLIENTE ----------
 def menu_cliente(usuario_info):
     while True:
-        print("\n1. Ver mapa de centros conectados")
-        print("2. Consultar ruta optima entre dos centros")
-        print("3. Explorar centros organizados jerarquicamente")
-        print("4. Seleccionar centros para un envio (minimo dos)")
+        print("\n===== MENÚ CLIENTE =====")
+        print("1. Ver mapa de centros conectados")
+        print("2. Consultar ruta óptima entre dos centros")
+        print("3. Explorar centros organizados jerárquicamente")
+        print("4. Seleccionar centros para un envío (mínimo dos)")
         print("5. Listar centros seleccionados y costo total")
-        print("6. Actualizar seleccion de centros")
+        print("6. Actualizar selección de centros")
         print("7. Eliminar centros seleccionados")
-        print("8. Guardar seleccion en archivo personal")
+        print("8. Guardar selección en archivo personal")
         print("9. Salir")
 
-        opcion = input("Seleccione una opción: ")
+        opcion = input("Seleccione una opción: ").strip()
 
         match opcion:
             case "1":
-                print("---Ver Mapa de Centros---")
+                print("--- Ver Mapa de Centros ---")
                 ver_mapa_centros()
             case "2":
-                print("---Consultar ruta óptima---")
+                print("--- Consultar ruta óptima ---")
                 consultar_ruta_optima()
             case "3":
-                print("---Explorar centros organizados jerarquicamente---")
+                print("--- Explorar centros organizados jerárquicamente ---")
                 explorar_centros_jerarquicos()
             case "4":
-                print("---Seleccionar centros---")
+                print("--- Seleccionar centros ---")
                 seleccionar_centros_envio()
             case "5":
-                print("---Listar centros celeccionados / Precio Total---")
+                print("--- Listar centros seleccionados / Precio Total ---")
                 listar_centros_seleccionados_y_costo()
             case "6":
-                print("---Actualizar seleccion de centros---")
+                print("--- Actualizar selección de centros ---")
                 seleccionar_centros_envio()
             case "7":
-                print("---Eliminar centros seleccionados---")
+                print("--- Eliminar centros seleccionados ---")
                 eliminar_centros_seleccionados()
             case "8":
-                print("---Guardar ruta---")
+                print("--- Guardar ruta ---")
                 guardar_seleccion_cliente(usuario_info)
             case "9":
                 print("Cerrando sesión de cliente...")
                 break
             case _:
-                print("---Opción inválida---")
+                print("--- Opción inválida ---")
 
 # ---------- PROGRAMA PRINCIPAL ----------
 def principal():
@@ -1122,7 +1215,7 @@ def principal():
         print("2. Iniciar sesión")
         print("3. Salir")
 
-        opcion = input("Seleccione una opción: ")
+        opcion = input("Seleccione una opción: ").strip()
 
         if opcion == "1":
             registrar_usuario()
@@ -1146,7 +1239,11 @@ if __name__ == "__main__":
     # Crear archivos si no existen
     for archivo in ["usuarios.txt", "centros.txt", "rutas.txt"]:
         if not os.path.exists(archivo):
-            with open(archivo, "w", encoding="utf-8") as f:
-                pass
+            try:
+                with open(archivo, "w", encoding="utf-8") as f:
+                    pass
+                print(f"Archivo {archivo} creado.")
+            except Exception as e:
+                print(f"Error al crear {archivo}: {e}")
 
     principal()
