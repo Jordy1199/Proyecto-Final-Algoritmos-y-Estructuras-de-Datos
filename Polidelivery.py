@@ -282,9 +282,44 @@ def dfs_exploracion_total(origen):
     dfs_recursivo(origen)
     return ruta_completa
 
+def consultar_ruta_optima():
+    print("\nCONSULTAR RUTA ÓPTIMA")
+
+    origen = input("Centro de origen: ").strip().upper()
+    destino = input("Centro de destino: ").strip().upper()
+
+    if origen not in grafo or destino not in grafo:
+        print("Centro no válido")
+        return
+
+    ruta, costo = dijkstra(origen, destino)
+
+    if ruta is None:
+        print("No existe ruta disponible")
+        return
+
+    print("\nRuta óptima encontrada:")
+    print(" -> ".join(ruta))
+    print(f"Costo total: ${costo:.2f}")
 
 
+def construir_matriz_costos():
+    centros = list(centros_dict.keys())
+    indice = {centros[i]: i for i in range(len(centros))}
+    n = len(centros)
 
+    matriz = [[float('inf')] * n for _ in range(n)]
+
+    for i in range(n):
+        matriz[i][i] = 0
+
+    for origen in grafo:
+        for destino, costo in grafo[origen]:
+            i = indice[origen]
+            j = indice[destino]
+            matriz[i][j] = costo
+
+    return matriz, centros
 
 
 # ---------- FUNCIONES 1, 2 y 3 DEL ADMINISTRADOR ----------
@@ -519,7 +554,7 @@ def menu_cliente(usuario_info):  # Mantenido exactamente como en tu segundo cód
             case "1":
                 print("---Ver mapa de centros---")
             case "2":
-                print("---Consultar ruta óptima---")
+                consultar_ruta_optima()
             case "3":
                 print("---Seleccionar centros---")
             case "4":
