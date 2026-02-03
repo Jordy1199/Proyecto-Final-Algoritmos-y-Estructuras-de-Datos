@@ -863,33 +863,6 @@ def consultar_ruta_optima():
     
     print("\n" + "="*60)
 
-def guardar_ruta_cliente(usuario_info):
-    print("\nGUARDAR RUTA DEL CLIENTE")
-
-    origen = input("Centro de origen: ").strip().upper()
-    destino = input("Centro de destino: ").strip().upper()
-
-    if origen not in grafo or destino not in grafo:
-        print("Centro no válido")
-        return
-
-    ruta, costo = dijkstra(origen, destino)
-
-    if ruta is None:
-        print("No existe una ruta disponible")
-        return
-
-    nombre_archivo = f"rutas-{usuario_info['nombre'].lower()}-{usuario_info['apellido'].lower()}.txt"
-
-    with open(nombre_archivo, "a", encoding="utf-8") as archivo:
-        archivo.write("Ruta guardada:\n")
-        archivo.write(" -> ".join(ruta) + "\n")
-        archivo.write(f"Costo total: ${costo:.2f}\n")
-        archivo.write("-" * 40 + "\n")
-
-    print(f"Ruta guardada correctamente en '{nombre_archivo}'")
-
-
 def seleccionar_centros_envio():
     global centros_seleccionados
     
@@ -981,6 +954,8 @@ def seleccionar_centros_envio():
                 print("Codigo no valido")
     
     print(f"\nSeleccion completada: {len(centros_seleccionados)} centros seleccionados")
+    
+
 
 # ---------- MENÚ ADMINISTRADOR ----------
 def menu_admin(usuario_info):
@@ -992,7 +967,7 @@ def menu_admin(usuario_info):
         print("4. Consultar un centro específico (con algoritmo de búsqueda)")
         print("5. Actualizar información de centros")
         print("6. Eliminar centros o rutas")
-        print("7. Guardar información en centros.txt")
+        print("7. Guardar información de centros y rutas")
         print("8. Salir")
 
         opcion = input("Seleccione una opción: ").strip()
@@ -1007,11 +982,11 @@ def menu_admin(usuario_info):
             case "4":
                 consultar_centro_especifico()
             case "5":
-                print()
+                actualizar_centro()
             case "6":
-                print()
+                eliminar_elemento()
             case "7":
-                print()
+                guardar_datos()
             case "8":
                 print("Cerrando sesión de administrador...")
                 break
@@ -1021,31 +996,40 @@ def menu_admin(usuario_info):
 # ---------- MENÚ CLIENTE ----------
 def menu_cliente(usuario_info):
     while True:
-        print("\n===== MENÚ CLIENTE =====")
-        print("1. Ver mapa de centros")
-        print("2. Consultar ruta óptima")
-        print("3. Seleccionar centros")
-        print("4. Guardar ruta")
-        print("5. Salir")
+        print("\n1. Ver mapa de centros conectados")
+        print("2. Consultar ruta optima entre dos centros")
+        print("3. Explorar centros organizados jerarquicamente")
+        print("4. Seleccionar centros para un envio (minimo dos)")
+        print("5. Listar centros seleccionados y costo total")
+        print("6. Actualizar seleccion de centros")
+        print("7. Eliminar centros seleccionados")
+        print("8. Guardar seleccion en archivo personal")
+        print("9. Salir")
 
         opcion = input("Seleccione una opción: ")
 
         match opcion:
             case "1":
-                print("---Ver mapa de centros---")
+                print("---Ver Mapa de Centros---")
                 ver_mapa_centros()
             case "2":
                 print("---Consultar ruta óptima---")
                 consultar_ruta_optima()
             case "3":
+                print("---Explorar centros organizados jerarquicamente---")
+            case "4":
                 print("---Seleccionar centros---")
                 seleccionar_centros_envio()
-            case "4":
-                print("---Guardar ruta---")
-                guardar_ruta_cliente(usuario_info)
             case "5":
+                print("---Listar centros celeccionados / Precio Total---")
+            case "6":
+                print("---Actualizar seleccion de centros---")
+            case "7":
+                print("---Eliminar centros seleccionados---")
+            case "8":
+                print("---Guardar ruta---")
+            case "9":
                 print("Cerrando sesión de cliente...")
-                centros_seleccionados.clear()
                 break
             case _:
                 print("---Opción inválida---")
