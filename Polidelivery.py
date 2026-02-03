@@ -863,6 +863,33 @@ def consultar_ruta_optima():
     
     print("\n" + "="*60)
 
+def guardar_ruta_cliente(usuario_info):
+    print("\nGUARDAR RUTA DEL CLIENTE")
+
+    origen = input("Centro de origen: ").strip().upper()
+    destino = input("Centro de destino: ").strip().upper()
+
+    if origen not in grafo or destino not in grafo:
+        print("Centro no válido")
+        return
+
+    ruta, costo = dijkstra(origen, destino)
+
+    if ruta is None:
+        print("No existe una ruta disponible")
+        return
+
+    nombre_archivo = f"rutas-{usuario_info['nombre'].lower()}-{usuario_info['apellido'].lower()}.txt"
+
+    with open(nombre_archivo, "a", encoding="utf-8") as archivo:
+        archivo.write("Ruta guardada:\n")
+        archivo.write(" -> ".join(ruta) + "\n")
+        archivo.write(f"Costo total: ${costo:.2f}\n")
+        archivo.write("-" * 40 + "\n")
+
+    print(f"Ruta guardada correctamente en '{nombre_archivo}'")
+
+
 def seleccionar_centros_envio():
     global centros_seleccionados
     
@@ -1015,8 +1042,10 @@ def menu_cliente(usuario_info):
                 seleccionar_centros_envio()
             case "4":
                 print("---Guardar ruta---")
+                guardar_ruta_cliente(usuario_info)
             case "5":
                 print("Cerrando sesión de cliente...")
+                centros_seleccionados.clear()
                 break
             case _:
                 print("---Opción inválida---")
