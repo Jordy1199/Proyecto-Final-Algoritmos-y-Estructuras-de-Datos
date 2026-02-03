@@ -6,6 +6,7 @@ import re
 import os
 import heapq
 from collections import deque
+
 # ---------- VARIABLES GLOBALES ----------
 grafo = {}
 centros_dict = {}  # Diccionario: codigo -> {nombre, region, subregion}
@@ -181,22 +182,79 @@ def login():
         print("Credenciales incorrectas")
         return None, None
 
-# ---------- ALGORITMO DE ORDENAMIENTO ----------
-def ordenamiento_burbuja(lista, campo):
-    n = len(lista)
-    for i in range(n-1):
-        for j in range(0, n-i-1):
-            if getattr(lista[j], campo) > getattr(lista[j+1], campo):
-                lista[j], lista[j+1] = lista[j+1], lista[j]
-    return lista
-
-# ---------- ALGORITMO DE BÚSQUEDA ----------
-def busqueda_secuencial(lista, campo, valor):
-    resultados = []
+# ---------- ALGORITMO DE ORDENAMIENTO (QUICK SORT) ----------
+def quicksort(lista, campo, ascendente=True):
+    """
+    Implementación de Quick Sort para ordenar listas de objetos.
+    """
+    if len(lista) <= 1:
+        return lista
+    
+    # Seleccionar pivote (elemento del medio)
+    pivot = lista[len(lista) // 2]
+    pivot_valor = getattr(pivot, campo)
+    
+    # Dividir en sublistas
+    left = []
+    middle = []
+    right = []
+    
     for item in lista:
-        if getattr(item, campo) == valor:
-            resultados.append(item)
-    return resultados
+        item_valor = getattr(item, campo)
+        if item_valor < pivot_valor:
+            left.append(item)
+        elif item_valor > pivot_valor:
+            right.append(item)
+        else:
+            middle.append(item)
+    
+    # Ordenar recursivamente y combinar
+    if ascendente:
+        return quicksort(left, campo, ascendente) + middle + quicksort(right, campo, ascendente)
+    else:
+        return quicksort(right, campo, ascendente) + middle + quicksort(left, campo, ascendente)
+
+# ---------- ALGORITMO DE BÚSQUEDA (BÚSQUEDA BINARIA) ----------
+def busqueda_binaria(lista_ordenada, campo, valor):
+    """
+    Implementación de Búsqueda Binaria para listas ordenadas.
+    Devuelve el índice del elemento encontrado o -1 si no existe.
+    """
+    izquierda = 0
+    derecha = len(lista_ordenada) - 1
+    
+    while izquierda <= derecha:
+        medio = (izquierda + derecha) // 2
+        medio_valor = getattr(lista_ordenada[medio], campo)
+        
+        if medio_valor == valor:
+            return medio
+        elif medio_valor < valor:
+            izquierda = medio + 1
+        else:
+            derecha = medio - 1
+    
+    return -1
+
+def buscar_centros_por_campo(valor_buscar, campo_buscar):
+    """
+    Función auxiliar para buscar centros usando búsqueda binaria.
+    """
+    # Primero ordenar la lista
+    centros_objetos = []
+    for codigo, datos in centros_dict.items():
+        centros_objetos.append(Centro(codigo, datos["nombre"], datos["region"], datos["subregion"]))
+    
+    # Ordenar por el campo de búsqueda
+    centros_ordenados = quicksort(centros_objetos.copy(), campo_buscar)
+    
+    # Realizar búsqueda binaria
+    indice = busqueda_binaria(centros_ordenados, campo_buscar, valor_buscar)
+    
+    if indice != -1:
+        return [centros_ordenados[indice]]
+    else:
+        return []
 
 # ---------- ALGORITMOS DE GRAFOS ----------
 def dijkstra(origen, destino=None):
@@ -281,46 +339,6 @@ def dfs_exploracion_total(origen):
     
     dfs_recursivo(origen)
     return ruta_completa
-
-def consultar_ruta_optima():
-    print("\nCONSULTAR RUTA ÓPTIMA")
-
-    origen = input("Centro de origen: ").strip().upper()
-    destino = input("Centro de destino: ").strip().upper()
-
-    if origen not in grafo or destino not in grafo:
-        print("Centro no válido")
-        return
-
-    ruta, costo = dijkstra(origen, destino)
-
-    if ruta is None:
-        print("No existe ruta disponible")
-        return
-
-    print("\nRuta óptima encontrada:")
-    print(" -> ".join(ruta))
-    print(f"Costo total: ${costo:.2f}")
-
-
-def construir_matriz_costos():
-    centros = list(centros_dict.keys())
-    indice = {centros[i]: i for i in range(len(centros))}
-    n = len(centros)
-
-    matriz = [[float('inf')] * n for _ in range(n)]
-
-    for i in range(n):
-        matriz[i][i] = 0
-
-    for origen in grafo:
-        for destino, costo in grafo[origen]:
-            i = indice[origen]
-            j = indice[destino]
-            matriz[i][j] = costo
-
-    return matriz, centros
-
 
 # ---------- FUNCIONES 1, 2 y 3 DEL ADMINISTRADOR ----------
 def agregar_centro_distribucion():
@@ -460,8 +478,9 @@ def menu_listar_ordenamiento():
         print("1. Código")
         print("2. Nombre")
         print("3. Región")
+        print("4. Subregión")
         
-        campo_opcion = input("Seleccione (1-3): ").strip()
+        campo_opcion = input("Seleccione (1-4): ").strip()
         
         # Convertir a lista de objetos Centro
         centros_objetos = []
@@ -469,14 +488,21 @@ def menu_listar_ordenamiento():
             centros_objetos.append(Centro(codigo, datos["nombre"], datos["region"], datos["subregion"]))
         
         # Mapear selección de campo
-        campos = {1: "codigo", 2: "nombre", 3: "region"}
+        campos = {1: "codigo", 2: "nombre", 3: "region", 4: "subregion"}
         campo = campos.get(int(campo_opcion), "codigo")
         
-        # Aplicar ordenamiento
-        centros_ordenados = ordenamiento_burbuja(centros_objetos.copy(), campo)
+        print("\nOrden:")
+        print("1. Ascendente (A-Z, 0-9)")
+        print("2. Descendente (Z-A, 9-0)")
+        orden_opcion = input("Seleccione (1-2): ").strip()
+        ascendente = orden_opcion == "1"
+        
+        # Aplicar ordenamiento QUICK SORT
+        centros_ordenados = quicksort(centros_objetos.copy(), campo, ascendente)
         
         print("\n" + "="*80)
-        print(f"CENTROS ORDENADOS POR {campo.upper()} (Ordenamiento Burbuja)")
+        orden_texto = "ASCENDENTE" if ascendente else "DESCENDENTE"
+        print(f"CENTROS ORDENADOS POR {campo.upper()} ({orden_texto} - Quick Sort)")
         print("="*80)
         print(f"{'CÓDIGO':<10} {'NOMBRE':<25} {'REGIÓN':<15} {'SUBREGIÓN':<15}")
         print("-"*80)
@@ -502,6 +528,48 @@ def menu_listar_ordenamiento():
     else:
         print("Opción inválida")
 
+def consultar_centro_especifico():
+    print("\n" + "="*40)
+    print("CONSULTAR CENTRO ESPECÍFICO")
+    print("="*40)
+    
+    if not centros_dict:
+        print("No hay centros registrados.")
+        return
+    
+    print("\nBuscar por:")
+    print("1. Código")
+    print("2. Nombre")
+    print("3. Región")
+    print("4. Subregión")
+    
+    opcion = input("Seleccione (1-4): ").strip()
+    
+    campo_map = {"1": "codigo", "2": "nombre", "3": "region", "4": "subregion"}
+    campo = campo_map.get(opcion, "codigo")
+    
+    valor_buscar = input(f"Ingrese el {campo} a buscar: ").strip()
+    if campo == "codigo":
+        valor_buscar = valor_buscar.upper()
+    
+    # Realizar búsqueda binaria
+    resultados = buscar_centros_por_campo(valor_buscar, campo)
+    
+    if resultados:
+        print("\n" + "="*80)
+        print(f"RESULTADOS DE BÚSQUEDA (Búsqueda Binaria)")
+        print("="*80)
+        print(f"{'CÓDIGO':<10} {'NOMBRE':<25} {'REGIÓN':<15} {'SUBREGIÓN':<15}")
+        print("-"*80)
+        
+        for centro in resultados:
+            print(f"{centro.codigo:<10} {centro.nombre:<25} {centro.region:<15} {centro.subregion:<15}")
+        
+        print("="*80)
+        print(f"Encontrados: {len(resultados)} centro(s)")
+    else:
+        print(f"\nNo se encontraron centros con {campo}: '{valor_buscar}'")
+
 # ---------- MENÚ ADMINISTRADOR ----------
 def menu_admin(usuario_info):
     while True:
@@ -525,7 +593,7 @@ def menu_admin(usuario_info):
             case "3":
                 menu_listar_ordenamiento()
             case "4":
-                print()
+                consultar_centro_especifico()
             case "5":
                 print()
             case "6":
@@ -539,7 +607,7 @@ def menu_admin(usuario_info):
                 print("Opción inválida")
 
 # ---------- MENÚ CLIENTE ----------
-def menu_cliente(usuario_info):  # Mantenido exactamente como en tu segundo código
+def menu_cliente(usuario_info):
     while True:
         print("\n===== MENÚ CLIENTE =====")
         print("1. Ver mapa de centros")
@@ -554,7 +622,7 @@ def menu_cliente(usuario_info):  # Mantenido exactamente como en tu segundo cód
             case "1":
                 print("---Ver mapa de centros---")
             case "2":
-                consultar_ruta_optima()
+                print("---Consultar ruta óptima---")
             case "3":
                 print("---Seleccionar centros---")
             case "4":
@@ -604,3 +672,4 @@ if __name__ == "__main__":
                 pass
     
     principal()
+    
