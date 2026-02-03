@@ -954,7 +954,23 @@ def seleccionar_centros_envio():
                 print("Codigo no valido")
     
     print(f"\nSeleccion completada: {len(centros_seleccionados)} centros seleccionados")
-    
+
+
+def explorar_centros_jerarquicos():
+    print("\nCENTROS ORGANIZADOS POR REGIÓN Y SUBREGIÓN\n")
+
+    if not regiones_arbol:
+        print("No hay centros registrados")
+        return
+
+    for region, subregiones in regiones_arbol.items():
+        print(f"Región: {region}")
+        for subregion, centros in subregiones.items():
+            print(f"  Subregión: {subregion}")
+            for codigo in centros:
+                nombre = centros_dict[codigo]['nombre']
+                print(f"    - {codigo}: {nombre}")
+
 
 
 # ---------- MENÚ ADMINISTRADOR ----------
@@ -1017,6 +1033,7 @@ def menu_cliente(usuario_info):
                 consultar_ruta_optima()
             case "3":
                 print("---Explorar centros organizados jerarquicamente---")
+                explorar_centros_jerarquicos()
             case "4":
                 print("---Seleccionar centros---")
                 seleccionar_centros_envio()
