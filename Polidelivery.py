@@ -4,7 +4,8 @@
 
 import re
 import os
-
+import heapq
+from collections import deque
 # ---------- VARIABLES GLOBALES ----------
 grafo = {}
 centros_dict = {}  # Diccionario: codigo -> {nombre, region, subregion}
@@ -196,6 +197,95 @@ def busqueda_secuencial(lista, campo, valor):
         if getattr(item, campo) == valor:
             resultados.append(item)
     return resultados
+
+# ---------- ALGORITMOS DE GRAFOS ----------
+def dijkstra(origen, destino=None):
+    if origen not in grafo:
+        return None
+    
+    distancias = {nodo: float('inf') for nodo in grafo}
+    distancias[origen] = 0
+    predecesores = {nodo: None for nodo in grafo}
+    heap = [(0, origen)]
+    
+    while heap:
+        costo_actual, nodo = heapq.heappop(heap)
+        
+        if costo_actual > distancias[nodo]:
+            continue
+        
+        for vecino, peso in grafo[nodo]:
+            nuevo_costo = costo_actual + peso
+            if nuevo_costo < distancias[vecino]:
+                distancias[vecino] = nuevo_costo
+                predecesores[vecino] = nodo
+                heapq.heappush(heap, (nuevo_costo, vecino))
+    
+    if destino:
+        if distancias[destino] == float('inf'):
+            return None, float('inf')
+        
+        # Reconstruir ruta
+        ruta = []
+        nodo = destino
+        while nodo is not None:
+            ruta.append(nodo)
+            nodo = predecesores[nodo]
+        ruta.reverse()
+        
+        return ruta, distancias[destino]
+    
+    return distancias, predecesores
+
+def bfs_busqueda_centros(origen, max_distancia):
+    if origen not in grafo:
+        return []
+    
+    visitados = set()
+    resultados = []
+    cola = deque([(origen, 0)])
+    
+    while cola:
+        nodo, distancia_actual = cola.popleft()
+        
+        if nodo in visitados:
+            continue
+        
+        visitados.add(nodo)
+        
+        if distancia_actual <= max_distancia and nodo != origen:
+            resultados.append((nodo, distancia_actual))
+        
+        for vecino, peso in grafo[nodo]:
+            if vecino not in visitados:
+                nueva_distancia = distancia_actual + peso
+                if nueva_distancia <= max_distancia:
+                    cola.append((vecino, nueva_distancia))
+    
+    return resultados
+
+def dfs_exploracion_total(origen):
+    if origen not in grafo:
+        return []
+    
+    visitados = set()
+    ruta_completa = []
+    
+    def dfs_recursivo(nodo):
+        visitados.add(nodo)
+        ruta_completa.append(nodo)
+        
+        for vecino, _ in grafo[nodo]:
+            if vecino not in visitados:
+                dfs_recursivo(vecino)
+    
+    dfs_recursivo(origen)
+    return ruta_completa
+
+
+
+
+
 
 # ---------- FUNCIONES 1, 2 y 3 DEL ADMINISTRADOR ----------
 def agregar_centro_distribucion():
