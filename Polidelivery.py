@@ -971,6 +971,62 @@ def explorar_centros_jerarquicos():
                 nombre = centros_dict[codigo]['nombre']
                 print(f"    - {codigo}: {nombre}")
 
+def listar_centros_seleccionados_y_costo():
+    print("\nCENTROS SELECCIONADOS Y COSTO TOTAL\n")
+
+    if len(centros_seleccionados) < 2:
+        print("Debe haber al menos 2 centros seleccionados")
+        return
+
+    costo_total = 0
+
+    for i in range(len(centros_seleccionados) - 1):
+        origen = centros_seleccionados[i]
+        destino = centros_seleccionados[i + 1]
+        _, costo = dijkstra(origen, destino)
+        costo_total += costo
+
+    print("Ruta seleccionada:")
+    print(" -> ".join(centros_seleccionados))
+    print(f"Costo total estimado: ${costo_total:.2f}")
+
+def eliminar_centros_seleccionados():
+    global centros_seleccionados
+
+    if not centros_seleccionados:
+        print("No hay centros seleccionados")
+        return
+
+    print("\nCentros seleccionados:")
+    for i, codigo in enumerate(centros_seleccionados, 1):
+        nombre = centros_dict[codigo]['nombre']
+        print(f"{i}. {codigo}: {nombre}")
+
+    codigo = input("\nIngrese código a eliminar (o 'todos'): ").strip().upper()
+
+    if codigo == "TODOS":
+        centros_seleccionados.clear()
+        print("Selección eliminada")
+    elif codigo in centros_seleccionados:
+        centros_seleccionados.remove(codigo)
+        print(f"Centro {codigo} eliminado de la selección")
+    else:
+        print("Código no válido")
+
+def guardar_seleccion_cliente(usuario_info):
+    if len(centros_seleccionados) < 2:
+        print("Debe seleccionar al menos 2 centros")
+        return
+
+    nombre_archivo = f"seleccion-{usuario_info['nombre'].lower()}-{usuario_info['apellido'].lower()}.txt"
+
+    with open(nombre_archivo, "w", encoding="utf-8") as archivo:
+        archivo.write("Centros seleccionados:\n")
+        for codigo in centros_seleccionados:
+            nombre = centros_dict[codigo]['nombre']
+            archivo.write(f"- {codigo}: {nombre}\n")
+
+    print(f"Selección guardada en {nombre_archivo}")
 
 
 # ---------- MENÚ ADMINISTRADOR ----------
@@ -1039,12 +1095,16 @@ def menu_cliente(usuario_info):
                 seleccionar_centros_envio()
             case "5":
                 print("---Listar centros celeccionados / Precio Total---")
+                listar_centros_seleccionados_y_costo()
             case "6":
                 print("---Actualizar seleccion de centros---")
+                seleccionar_centros_envio()
             case "7":
                 print("---Eliminar centros seleccionados---")
+                eliminar_centros_seleccionados()
             case "8":
                 print("---Guardar ruta---")
+                guardar_seleccion_cliente(usuario_info)
             case "9":
                 print("Cerrando sesión de cliente...")
                 break
