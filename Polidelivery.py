@@ -1,6 +1,6 @@
-## =====================================
-# POLIDELIVERY - REGISTRO, LOGIN Y ADMIN 
-# =====================================
+# ================
+# POLIDELIVERY  
+# ================
 import re
 import os
 import heapq
@@ -1032,32 +1032,25 @@ def explorar_centros_jerarquicos():
 
 def listar_centros_seleccionados_y_costo():
     print("\nCENTROS SELECCIONADOS Y COSTO TOTAL\n")
-
     if len(centros_seleccionados) < 2:
         print("Debe haber al menos 2 centros seleccionados")
         return
-
     costo_total = 0
     ruta_completa = []
-
     print("Ruta seleccionada:")
     for i in range(len(centros_seleccionados) - 1):
         origen = centros_seleccionados[i]
         destino = centros_seleccionados[i + 1]
         ruta, costo = dijkstra(origen, destino)
-        
         if ruta is None:
             print(f"No hay ruta disponible entre {origen} y {destino}")
             return
-        
         if i == 0:
             ruta_completa.extend(ruta)
         else:
             # Evitar duplicar el nodo de conexión
             ruta_completa.extend(ruta[1:])
-        
         costo_total += costo
-    
     print(" -> ".join(centros_seleccionados))
     print(f"\nCosto total estimado: ${costo_total:.2f}")
     
@@ -1065,6 +1058,51 @@ def listar_centros_seleccionados_y_costo():
     for i, codigo in enumerate(ruta_completa):
         nombre = centros_dict.get(codigo, {}).get('nombre', 'Desconocido')
         print(f"  {i+1:2}. {codigo}: {nombre}")
+        
+def actualizar_centros_envio():
+    global centros_seleccionados
+    if not centros_seleccionados:
+        print("No hay centros seleccionados para actualizar")
+        return
+    print("\n" + "="*40)
+    print("ACTUALIZAR CENTROS SELECCIONADOS")
+    print("="*40)
+    while True:
+        print("\nCentros seleccionados:")
+        for i, codigo in enumerate(centros_seleccionados, 1):
+            nombre = centros_dict[codigo]['nombre']
+            print(f"  {i:2}. {codigo}: {nombre}")
+        print("\nOpciones:")
+        print("  [código] - Quitar centro")
+        print("  ordenar  - Ordenar selección")
+        print("  volver   - Regresar al menú")
+        opcion = input("\nOpción: ").strip().upper()
+        if opcion == "VOLVER":
+            break
+        elif opcion == "ORDENAR":
+            print("\nOrdenar por:")
+            print("1. Código")
+            print("2. Nombre")
+            print("3. Región")
+            try:
+                campo_opcion = int(input("Seleccione (1-3): "))
+                campos = {1: "codigo", 2: "nombre", 3: "region"}
+                campo = campos.get(campo_opcion, "codigo")
+                centros_objs = [ Centro(c, centros_dict[c]['nombre'],
+                           centros_dict[c]['region'],
+                           centros_dict[c]['subregion'])
+                    for c in centros_seleccionados]
+                centros_ordenados = quicksort(centros_objs, campo, True)
+                centros_seleccionados = [c.codigo for c in centros_ordenados]
+                print(f"Centros ordenados por {campo}")
+            except ValueError:
+                print("Opción inválida")
+        elif opcion in centros_seleccionados:
+            centros_seleccionados.remove(opcion)
+            print(f"Centro {opcion} eliminado de la selección")
+        else:
+            print("Opción no válida")
+
 
 def eliminar_centros_seleccionados():
     global centros_seleccionados
@@ -1191,7 +1229,7 @@ def menu_cliente(usuario_info):
                 listar_centros_seleccionados_y_costo()
             case "6":
                 print("--- Actualizar selección de centros ---")
-                seleccionar_centros_envio()
+                actualizar_centros_envio()
             case "7":
                 print("--- Eliminar centros seleccionados ---")
                 eliminar_centros_seleccionados()
